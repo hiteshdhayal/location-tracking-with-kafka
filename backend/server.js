@@ -15,22 +15,26 @@ const server = http.createServer(app);
 
 const io = new Server(server, {
   cors: {
-    origin: process.env.FRONTEND_URL,
+    origin: "http://localhost:5173",
     credentials: true,
   },
 });
 
 app.use(cors({
-  origin: process.env.FRONTEND_URL,
+  origin: "http://localhost:5173",
   credentials: true,
 }));
 
 app.use(express.json());
 
 app.use(session({
-  secret: process.env.SESSION_SECRET,
+  secret: process.env.SESSION_SECRET || "secret",
   resave: false,
   saveUninitialized: false,
+  cookie: {
+    secure: false,
+    httpOnly: true
+  }
 }));
 
 app.use(passport.initialize());
@@ -40,15 +44,14 @@ app.use(passport.session());
 app.get('/auth/google', passport.authenticate('google', { scope: ['profile', 'email'] }));
 
 app.get('/auth/google/callback',
-  passport.authenticate('google', { failureRedirect: `${process.env.FRONTEND_URL}/login` }),
+  passport.authenticate('google', { failureRedirect: '/' }),
   (req, res) => {
-    res.redirect(process.env.FRONTEND_URL);
+    res.redirect('http://localhost:5173');
   }
 );
 
 app.get('/auth/me', (req, res) => {
-  if (req.isAuthenticated()) return res.json(req.user);
-  res.status(401).json({ error: 'Not authenticated' });
+  res.json(req.user || null);
 });
 
 app.get('/auth/logout', (req, res) => {

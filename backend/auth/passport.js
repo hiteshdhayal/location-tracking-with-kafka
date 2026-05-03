@@ -8,9 +8,9 @@ passport.use(new GoogleStrategy({
 }, (accessToken, refreshToken, profile, done) => {
   const user = {
     id: profile.id,
-    name: profile.displayName,
-    email: profile.emails[0].value,
-    photo: profile.photos[0].value,
+    displayName: profile.displayName,
+    emails: profile.emails,
+    photos: profile.photos,
   };
   return done(null, user);
 }));
