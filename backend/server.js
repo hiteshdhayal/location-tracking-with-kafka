@@ -27,15 +27,17 @@ app.use(cors({
 
 app.use(express.json());
 
-app.use(session({
+const sessionMiddleware = session({
   secret: process.env.SESSION_SECRET || "secret",
   resave: false,
   saveUninitialized: false,
   cookie: {
     secure: false,
-    httpOnly: true
+    httpOnly: true,
+    sameSite: 'lax'
   }
-}));
+});
+app.use(sessionMiddleware);
 
 app.use(passport.initialize());
 app.use(passport.session());
@@ -70,11 +72,7 @@ const connectedUsers = {};
 
 // Socket.IO — tie socket connection to authenticated user via session
 const wrap = middleware => (socket, next) => middleware(socket.request, {}, next);
-io.use(wrap(session({
-  secret: process.env.SESSION_SECRET,
-  resave: false,
-  saveUninitialized: false,
-})));
+io.use(wrap(sessionMiddleware));
 io.use(wrap(passport.initialize()));
 io.use(wrap(passport.session()));
 
@@ -88,13 +86,13 @@ io.use((socket, next) => {
 
 io.on('connection', (socket) => {
   const user = socket.request.user;
-  console.log(`[Socket] Connected: ${user.name} (${socket.id})`);
+  console.log(`[Socket] Connected: ${user.displayName} (${socket.id})`);
 
   connectedUsers[socket.id] = {
     socketId: socket.id,
     userId: user.id,
-    name: user.name,
-    photo: user.photo,
+    name: user.displayName,
+    photo: user.photos?.[0]?.value,
   };
 
   socket.on('send-location', async (data) => {
@@ -108,8 +106,8 @@ io.on('connection', (socket) => {
 
     const locationEvent = {
       userId: user.id,
-      name: user.name,
-      photo: user.photo,
+      name: user.displayName,
+      photo: user.photos?.[0]?.value,
       lat,
       lng,
       timestamp: new Date().toISOString(),
@@ -123,7 +121,7 @@ io.on('connection', (socket) => {
   });
 
   socket.on('disconnect', () => {
-    console.log(`[Socket] Disconnected: ${user.name}`);
+    console.log(`[Socket] Disconnected: ${user.displayName}`);
     delete connectedUsers[socket.id];
     io.emit('user-disconnected', { userId: user.id });
   });
